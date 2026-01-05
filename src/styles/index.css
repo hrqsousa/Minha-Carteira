@@ -1,0 +1,167 @@
+:root {
+  /* OneUI Colors */
+  --primary-color: #004aad;
+  --primary-color-hover: #003a8c;
+
+  /* Light Mode */
+  --bg-color: #f2f2f2;
+  --surface-color: #ffffff;
+  --text-primary: #121212;
+  --text-secondary: #555555;
+  --border-color: #e0e0e0;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+
+  /* Spacing & Radii */
+  --radius-lg: 26px;
+  /* OneUI card radius */
+  --radius-md: 16px;
+  --radius-sm: 8px;
+  --radius-full: 999px;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Typography */
+  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --header-height: 60px;
+  --bottom-nav-height: 80px;
+  /* Taller for modern feel */
+  --sidebar-width: 250px;
+}
+
+/* Dark Mode Overrides */
+[data-theme='dark'] {
+  --bg-color: #121212;
+  --surface-color: #1c1c1e;
+  --text-primary: #f2f2f2;
+  --text-secondary: #8e8e93;
+  --border-color: #2c2c2e;
+  --primary-color: #0c59cf;
+  /* Slightly brighter for dark mode contrast */
+  --primary-color-hover: #3a82f6;
+  --radius-lg: 28px;
+  /* Slightly rounder */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+  /* Padding bottom handled in Layout now, specific to mobile */
+}
+
+/* Scrollbar Polish */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+/* Utilities */
+.container {
+  padding: var(--spacing-md);
+  max-width: 1200px;
+  /* Wider for desktop */
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: var(--spacing-xl);
+  }
+}
+
+.card {
+  background-color: var(--surface-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  /* Softer, spread out shadow */
+  margin-bottom: var(--spacing-md);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title-large {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:active {
+  opacity: 0.8;
+}
+
+.input-field {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--bg-color);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.input-field:focus {
+  outline: 2px solid var(--primary-color);
+}
