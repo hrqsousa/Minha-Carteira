@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { format, addMonths, parseISO } from 'date-fns';
 import { X, Calendar, User, CreditCard, Money, TextAlignLeft } from '@phosphor-icons/react';
+import { CustomDropdown } from './CustomDropdown';
+import { CustomDatePicker } from './CustomDatePicker';
 
 export function TransactionForm({ existingTransaction, onClose }) {
     const { responsibles, paymentMethods, addTransaction, updateTransaction } = useApp();
@@ -164,11 +166,10 @@ export function TransactionForm({ existingTransaction, onClose }) {
 
                 <div className="input-group">
                     <label>Data</label>
-                    <div className="input-container">
-                        <Calendar className="icon" size={20} />
-                        <input type="date" className="flex-input" value={date} onChange={e => setDate(e.target.value)} />
-                        {/* Wrapper for CSS date indicator hack if needed, strictly input is fine */}
-                    </div>
+                    <CustomDatePicker
+                        value={date}
+                        onChange={setDate}
+                    />
                 </div>
             </div>
 
@@ -185,22 +186,24 @@ export function TransactionForm({ existingTransaction, onClose }) {
             <div className="form-row">
                 <div className="input-group">
                     <label>Responsável</label>
-                    <div className="input-container">
-                        <User className="icon" size={20} />
-                        <select className="flex-input" value={responsibleId} onChange={e => setResponsibleId(e.target.value)}>
-                            {responsibles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                        </select>
-                    </div>
+                    <CustomDropdown
+                        options={responsibles.map(r => ({ value: r.id, label: r.name }))}
+                        value={responsibleId}
+                        onChange={setResponsibleId}
+                        icon={<User size={20} />}
+                        placeholder="Selecione..."
+                    />
                 </div>
 
                 <div className="input-group">
                     <label>Pagamento</label>
-                    <div className="input-container">
-                        <CreditCard className="icon" size={20} />
-                        <select className="flex-input" value={paymentMethodId} onChange={e => setPaymentMethodId(e.target.value)}>
-                            {paymentMethods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                    </div>
+                    <CustomDropdown
+                        options={paymentMethods.map(p => ({ value: p.id, label: p.name }))}
+                        value={paymentMethodId}
+                        onChange={setPaymentMethodId}
+                        icon={<CreditCard size={20} />}
+                        placeholder="Selecione..."
+                    />
                 </div>
             </div>
 
@@ -247,8 +250,8 @@ export function TransactionForm({ existingTransaction, onClose }) {
             
             .toggle-wrapper { display: flex; background: var(--border-color); padding: 4px; border-radius: var(--radius-md); gap: 4px; }
             .type-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); font-weight: 600; color: var(--text-secondary); transition: all 0.2s; }
-            .type-btn.active.expense { background: var(--surface-color); color: var(--danger-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-            .type-btn.active.income { background: var(--surface-color); color: var(--success-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+            .type-btn.active.expense { background: var(--danger-color); color: white; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); }
+            .type-btn.active.income { background: var(--success-color); color: white; box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); }
 
             .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
             
