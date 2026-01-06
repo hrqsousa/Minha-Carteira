@@ -4,6 +4,7 @@ import { format, addMonths, parseISO } from 'date-fns';
 import { X, Calendar, User, CreditCard, Money, TextAlignLeft } from '@phosphor-icons/react';
 import { CustomDropdown } from './CustomDropdown';
 import { CustomDatePicker } from './CustomDatePicker';
+import { ActionScopeModal } from './ActionScopeModal';
 
 export function TransactionForm({ existingTransaction, onClose }) {
     const { responsibles, paymentMethods, addTransaction, updateTransaction } = useApp();
@@ -59,58 +60,18 @@ export function TransactionForm({ existingTransaction, onClose }) {
         return number.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     };
 
+    const [showScopeModal, setShowScopeModal] = useState(false);
+    const [pendingUpdate, setPendingUpdate] = useState(null);
+    const { transactions } = useApp(); // Access transactions for finding group members
+
     const handleSubmit = async () => {
         if (!description || !rawAmount || !responsibleId) return;
 
         const finalAmount = Number(rawAmount) / 100;
-        const groupId = crypto.randomUUID();
-        const baseDate = parseISO(date);
 
-        if (isInstallment && !existingTransaction) {
-            // Generate N installments
-            const amountPerInstallment = finalAmount / installmentCount;
-
-            for (let i = 0; i < installmentCount; i++) {
-                const tDate = addMonths(baseDate, i + (deferred ? 1 : 0));
-
-                await addTransaction({
-                    description: `${description} (${i + 1}/${installmentCount})`,
-                    amount: amountPerInstallment,
-                    type,
-                    date: format(tDate, 'yyyy-MM-dd'),
-                    responsibleId,
-                    paymentMethodId,
-                    isInstallment: true,
-                    installmentCount,
-                    installmentNumber: i + 1,
-                    groupId,
-                    deferred: false
-                });
-            }
-        }
-        else if (isRecurring && !existingTransaction) {
-            // Generate 12 months (limit for now to avoid spamming DB too much on first go, but user requested 24 logic, kept logic similar but firing calls)
-            // Warning: 24 calls might be slow. Optimization: Batch write. 
-            // For now, simple loop is fine for MVP persistence.
-            const startIdx = deferred ? 1 : 0;
-            const endIdx = startIdx + 24;
-
-            for (let i = startIdx; i < endIdx; i++) {
-                const tDate = addMonths(baseDate, i);
-                await addTransaction({
-                    description,
-                    amount: finalAmount,
-                    type,
-                    date: format(tDate, 'yyyy-MM-dd'),
-                    responsibleId,
-                    paymentMethodId,
-                    isRecurring: true,
-                    groupId
-                });
-            }
-        }
-        else if (existingTransaction) {
-            await updateTransaction(existingTransaction.id, {
+        // If it's an update to a recurring/installment item
+        if (existingTransaction && existingTransaction.groupId) {
+            setPendingUpdate({
                 description,
                 amount: finalAmount,
                 date,
@@ -119,24 +80,155 @@ export function TransactionForm({ existingTransaction, onClose }) {
                 paymentMethodId,
                 deferred
             });
-            onClose();
+            setShowScopeModal(true);
             return;
         }
+
+        // Standard Create/Update Logic (No Scope)
+        await processSubmit();
+    };
+
+    const processSubmit = async (scope = 'single', updateData = null) => {
+        const dataToUse = updateData || {
+            description,
+            amount: Number(rawAmount) / 100,
+            date,
+            type,
+            responsibleId,
+            paymentMethodId,
+            deferred
+        };
+
+        const groupId = existingTransaction?.groupId || crypto.randomUUID();
+        const baseDate = parseISO(dataToUse.date);
+
+        if (existingTransaction) {
+            // *** UPDATE LOGIC ***
+            if (scope === 'single') {
+                await updateTransaction(existingTransaction.id, dataToUse);
+            }
+            else {
+                // Batch Update
+                // 1. Find targets
+                const targets = transactions.filter(t => t.groupId === existingTransaction.groupId);
+
+                // 2. Filter by scope
+                const isFuture = scope === 'future';
+                const currentBaseDate = parseISO(existingTransaction.date);
+
+                const transactionsToUpdate = targets.filter(t => {
+                    if (scope === 'all') return true;
+                    // Future: Date >= current OR (same date and ID check - naive date check is usually enough for daily granularity)
+                    // Better: Compare ISO strings
+                    return t.date >= existingTransaction.date;
+                });
+
+                // 3. Calculate Date Shift (Delta)
+                // We use time difference to shift everything equally
+                const oldDateObj = parseISO(existingTransaction.date);
+                const newDateObj = parseISO(dataToUse.date);
+                const timeDiff = newDateObj.getTime() - oldDateObj.getTime();
+
+                // 4. Apply Updates
+                for (const t of transactionsToUpdate) {
+                    const tOldDate = parseISO(t.date);
+                    const tNewDate = new Date(tOldDate.getTime() + timeDiff);
+                    const tNewDateStr = format(tNewDate, 'yyyy-MM-dd');
+
+                    // Description logic: Preserve (X/Y) if it exists, but update the text part
+                    let newDesc = dataToUse.description;
+                    if (t.isInstallment && t.installmentNumber) {
+                        // If the user changed the description, we want to use the new text but keep the OLD numbering
+                        // Extract base description from NEW input (remove any potential X/Y user might have typed? No, user types base)
+                        // Assumption: User input in form IS the new base (without X/Y because we strip it on load? No we don't strip it on load yet in this file, let's check)
+                        // In useEffect load: setDescription(existingTransaction.description). This INCLUDES (1/5).
+                        // We should probably strip it when editing so user just edits "Mercado" not "Mercado (1/5)".
+                        // BUT for now, let's assume simple replace of the base part if we can detect it.
+
+                        // Regex to split "Name (1/5)"
+                        const matchOld = t.description.match(/(.*)\s\((\d+)\/(\d+)\)$/);
+                        const matchInput = dataToUse.description.match(/(.*)\s\((\d+)\/(\d+)\)$/); // In case user left it in
+
+                        const baseDesc = matchInput ? matchInput[1] : dataToUse.description;
+
+                        // Re-attach THIS transaction's numbering
+                        if (matchOld) {
+                            newDesc = `${baseDesc} (${matchOld[2]}/${matchOld[3]})`;
+                        } else {
+                            // Fallback if regex fails (maybe user deleted suffix), just add current info
+                            newDesc = `${baseDesc} (${t.installmentNumber}/${t.installmentCount})`;
+                        }
+                    }
+
+                    await updateTransaction(t.id, {
+                        ...dataToUse, // Apply all new fields (amount, type, etc)
+                        date: tNewDateStr, // Shifted date
+                        description: newDesc,
+                        originalDate: t.isInstallment && t.installmentNumber === 1 ? tNewDateStr : t.originalDate // Update original date if we moved the first one? complex. Let's just update date.
+                    });
+                }
+            }
+        }
         else {
-            // Single Transaction
-            await addTransaction({
-                description,
-                amount: finalAmount,
-                type,
-                date,
-                responsibleId,
-                paymentMethodId,
-                isRecurring: false,
-                deferred
-            });
+            // *** CREATE LOGIC (Unchanged mostly) ***
+            if (isInstallment) {
+                // ... (Existing Create Installment Logic)
+                const finalAmount = dataToUse.amount;
+                const count = installmentCount; // state
+
+                for (let i = 0; i < count; i++) {
+                    const tDate = addMonths(baseDate, i + (dataToUse.deferred ? 1 : 0));
+                    await addTransaction({
+                        description: `${dataToUse.description} (${i + 1}/${count})`,
+                        amount: finalAmount / count,
+                        type,
+                        date: format(tDate, 'yyyy-MM-dd'),
+                        responsibleId,
+                        paymentMethodId,
+                        isInstallment: true,
+                        installmentCount: count,
+                        installmentNumber: i + 1,
+                        groupId,
+                        deferred: false,
+                        originalDate: dataToUse.date
+                    });
+                }
+            }
+            else if (isRecurring) {
+                // ... (Existing Create Recurring Logic)
+                const startIdx = dataToUse.deferred ? 1 : 0;
+                const endIdx = startIdx + 24;
+                for (let i = startIdx; i < endIdx; i++) {
+                    const tDate = addMonths(baseDate, i);
+                    await addTransaction({
+                        description: dataToUse.description,
+                        amount: dataToUse.amount,
+                        type,
+                        date: format(tDate, 'yyyy-MM-dd'),
+                        responsibleId,
+                        paymentMethodId,
+                        isRecurring: true,
+                        groupId
+                    });
+                }
+            } else {
+                await addTransaction({
+                    ...dataToUse,
+                    isRecurring: false,
+                    isInstallment: false,
+                    groupId: null // Single no group
+                });
+            }
         }
 
         onClose();
+    };
+
+    const handleConfirmScope = (scope) => {
+        setShowScopeModal(false);
+        if (pendingUpdate) {
+            processSubmit(scope, pendingUpdate);
+        }
     };
 
     return (
@@ -247,6 +339,8 @@ export function TransactionForm({ existingTransaction, onClose }) {
 
             <style>{`
             .form-content { display: flex; flex-direction: column; gap: 20px; }
+            /* ... (keep existing styles, just closing tag anchor) */
+            /* Shortening for brevity in tool call, standard replacement works */
             
             .toggle-wrapper { display: flex; background: var(--border-color); padding: 4px; border-radius: var(--radius-md); gap: 4px; }
             .type-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); font-weight: 600; color: var(--text-secondary); transition: all 0.2s; }
@@ -317,6 +411,12 @@ export function TransactionForm({ existingTransaction, onClose }) {
             }
             .btn-primary:active { transform: scale(0.98); }
             `}</style>
+
+            <ActionScopeModal
+                isOpen={showScopeModal}
+                onClose={() => setShowScopeModal(false)}
+                onConfirm={handleConfirmScope}
+            />
         </div>
     );
 }
