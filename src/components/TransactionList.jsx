@@ -2,7 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { format, isToday, isYesterday, parseISO, isSameMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp } from '../context/AppContext';
-import { TrendUp, TrendDown, Pencil, Trash, MagnifyingGlass, Funnel, Infinity, CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { TrendUp, TrendDown, Pencil, Trash, MagnifyingGlass, Funnel, Infinity, CaretLeft, CaretRight, Clock, ArrowRight } from '@phosphor-icons/react';
+
+
 import { ConfirmModal } from './ConfirmModal';
 import { DeleteScopeModal } from './DeleteScopeModal';
 import { useLocation } from 'react-router-dom';
@@ -10,6 +12,15 @@ import { useLocation } from 'react-router-dom';
 export function TransactionList({ onEdit, onDelete }) {
     const { transactions, deleteTransaction, responsibles, paymentMethods, currentDate, setCurrentDate } = useApp();
     const location = useLocation();
+
+    const isFuture = (dateStr) => {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        return dateStr > today;
+    };
+
+    const cleanDescription = (desc) => {
+        return desc.replace(/\s*\(\d+\/\d+\)$/, '').trim();
+    };
 
     // Local Filters
     const [search, setSearch] = useState('');
@@ -59,7 +70,25 @@ export function TransactionList({ onEdit, onDelete }) {
 
     const groupedTransactions = filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date))
         .reduce((groups, transaction) => {
-            const date = transaction.date;
+            let date = transaction.date;
+
+            // For installments, group by original date
+            if (transaction.isInstallment) {
+                if (transaction.originalDate) {
+                    date = transaction.originalDate;
+                } else {
+                    // Fallback: Calculate original date for legacy data
+                    // original = current - (installmentNumber - 1) months
+                    try {
+                        const current = parseISO(transaction.date);
+                        const original = subMonths(current, (transaction.installmentNumber || 1) - 1);
+                        date = format(original, 'yyyy-MM-dd');
+                    } catch (e) {
+                        console.error("Error calculating original date", e);
+                    }
+                }
+            }
+
             if (!groups[date]) groups[date] = [];
             groups[date].push(transaction);
             return groups;
@@ -72,6 +101,9 @@ export function TransactionList({ onEdit, onDelete }) {
         const date = parseISO(dateStr);
         if (isToday(date)) return 'Hoje';
         if (isYesterday(date)) return 'Ontem';
+        if (date.getFullYear() !== new Date().getFullYear()) {
+            return format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+        }
         return format(date, "dd 'de' MMMM", { locale: ptBR });
     };
 
@@ -174,52 +206,62 @@ export function TransactionList({ onEdit, onDelete }) {
                     <p>Nenhum lançamento neste mês.</p>
                 </div>
             ) : (
-                Object.keys(groupedTransactions).map(date => (
-                    <div key={date} className="date-group">
-                        <h3 className="date-header">{formatDateHeader(date)}</h3>
-                        <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                            {groupedTransactions[date].map((t, index) => (
-                                <div key={t.id} className="transaction-item" style={{
-                                    borderBottom: index === groupedTransactions[date].length - 1 ? 'none' : '1px solid var(--border-color)'
-                                }} onClick={() => onEdit(t)}>
-                                    <div className="item-left">
-                                        <div className="item-icon" style={{
-                                            backgroundColor: t.type === 'income' ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
-                                            color: t.type === 'income' ? 'var(--success-color)' : 'var(--danger-color)'
-                                        }}>
-                                            {t.type === 'income' ? <TrendUp size={20} weight="bold" /> : <TrendDown size={20} weight="bold" />}
-                                        </div>
-                                        <div className="item-info">
-                                            <div className="item-desc">
-                                                {t.description}
-                                                {t.installmentCount > 1 && <span className="badge">{t.installmentNumber}/{t.installmentCount}</span>}
-                                                {t.isRecurring && <span className="badge badge-blue"><Infinity size={12} weight="bold" /></span>}
+                Object.keys(groupedTransactions)
+                    .sort((a, b) => new Date(b) - new Date(a)) // Sort Descending (Newest first)
+                    .map(date => (
+                        <div key={date} className="date-group">
+                            <h3 className="date-header">{formatDateHeader(date)}</h3>
+                            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                                {groupedTransactions[date].map((t, index) => (
+                                    <div key={t.id} className="transaction-item" style={{
+                                        borderBottom: index === groupedTransactions[date].length - 1 ? 'none' : '1px solid var(--border-color)'
+                                    }} onClick={() => onEdit(t)}>
+                                        <div className="item-left">
+                                            <div className="item-icon" style={{
+                                                backgroundColor: t.type === 'income' ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
+                                                color: t.type === 'income' ? 'var(--success-color)' : 'var(--danger-color)'
+                                            }}>
+                                                {t.type === 'income' ? <TrendUp size={20} weight="bold" /> : <TrendDown size={20} weight="bold" />}
                                             </div>
-                                            <div className="item-meta">
-                                                {getResponsibleName(t.responsibleId)} • {getPaymentMethodName(t.paymentMethodId)}
-                                                {t.deferred && <span className="badge deferred">Próx. Mês</span>}
+                                            <div className="item-info">
+                                                <div className="item-desc">
+                                                    {cleanDescription(t.description)}
+                                                    {isFuture(t.date) && (
+                                                        <Clock
+                                                            size={14}
+                                                            weight="fill"
+                                                            color="var(--primary-color)"
+                                                            style={{ marginLeft: '6px' }}
+                                                        />
+                                                    )}
+                                                    {t.installmentCount > 1 && <span className="badge">{t.installmentNumber}/{t.installmentCount}</span>}
+                                                    {t.isRecurring && <span className="badge badge-blue"><Infinity size={12} weight="bold" /></span>}
+                                                </div>
+                                                <div className="item-meta">
+                                                    {getResponsibleName(t.responsibleId)} • {getPaymentMethodName(t.paymentMethodId)}
+                                                    {t.deferred && <span className="badge deferred" title="Próx. Mês"><ArrowRight size={10} weight="bold" /></span>}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="item-right">
-                                        <div className={`item-amount ${t.type}`}>
-                                            {t.type === 'expense' ? '-' : '+'} {Number(t.amount).toFixed(2)}
-                                        </div>
-                                        <div className="item-actions">
-                                            <button className="action-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(t); }}>
-                                                <Pencil size={16} />
-                                            </button>
-                                            <button className="action-btn delete" onClick={(e) => handleDeleteClick(e, t)}>
-                                                <Trash size={16} />
-                                            </button>
+                                        <div className="item-right">
+                                            <div className={`item-amount ${t.type}`}>
+                                                {t.type === 'expense' ? '-' : '+'} {Number(t.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </div>
+                                            <div className="item-actions">
+                                                <button className="action-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(t); }}>
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button className="action-btn delete" onClick={(e) => handleDeleteClick(e, t)}>
+                                                    <Trash size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))
+                    ))
             )}
 
             <ConfirmModal
@@ -262,7 +304,7 @@ export function TransactionList({ onEdit, onDelete }) {
         .filters-row { display: flex; gap: 12px; }
         .filters-row select { flex: 1; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-primary); }
         
-        .date-header { font-size: 13px; color: var(--text-secondary); margin: 16px 8px 8px; text-transform: capitalize; font-weight: 600; }
+        .date-header { font-size: 13px; color: var(--text-secondary); margin: 16px 8px 8px; font-weight: 600; }
         .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; cursor: pointer; transition: background 0.2s; }
         .transaction-item:hover { background-color: rgba(0,0,0,0.01); }
         
