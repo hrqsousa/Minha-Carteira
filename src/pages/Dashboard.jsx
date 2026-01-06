@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { format, subMonths, isSameMonth, parseISO, addMonths, startOfDay, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CaretLeft, CaretRight, Eye, EyeSlash, Wallet, TrendUp, TrendDown } from '@phosphor-icons/react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,9 +28,6 @@ export default function Dashboard() {
     const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
     const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
 
-    // Filter Logic matches existing logic... (omitted for brevity, just replacing imports and render)
-    // ...
-
     // Filter Logic
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
@@ -43,6 +40,46 @@ export default function Dashboard() {
             return inMonth && matchesResp;
         });
     }, [transactions, currentDate, selectedRespId]);
+
+    // Payment Methods Data (Pie Chart)
+    const methodStats = useMemo(() => {
+        const today = startOfDay(new Date());
+        const methodTotals = transactions
+            .filter(t => {
+                let tDate = parseISO(t.date);
+                if (t.deferred) tDate = addMonths(tDate, 1);
+
+                // Must be in current view month
+                if (!isSameMonth(tDate, currentDate)) return false;
+
+                // Must be expense
+                if (t.type !== 'expense') return false;
+
+                // Check future logic
+                const isFuture = isAfter(tDate, today);
+                if (isFuture && !t.isInstallment && !t.deferred) return false;
+
+                return true;
+            })
+            .reduce((acc, t) => {
+                const id = t.paymentMethodId;
+                if (!acc[id]) acc[id] = 0;
+                acc[id] += Number(t.amount);
+                return acc;
+            }, {});
+
+        const sorted = Object.keys(methodTotals)
+            .sort((a, b) => methodTotals[b] - methodTotals[a])
+            .map(id => ({
+                id,
+                name: paymentMethods.find(p => p.id === id)?.name || 'Outro',
+                value: methodTotals[id]
+            }));
+
+        return sorted;
+    }, [transactions, currentDate, paymentMethods]);
+
+    const COLORS = ['#004aad', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6610f2'];
 
     // Totals
     const totals = useMemo(() => {
@@ -112,7 +149,7 @@ export default function Dashboard() {
                     <span className="hero-label">Saldo Atual</span>
                     <div className="hero-value-row">
                         <h1 className="hero-value" style={{ color: totals.balance < 0 ? '#ff8080' : 'white' }}>
-                            {hideValues ? '••••••' : `R$ ${totals.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                            {hideValues ? '••••••' : `R$ ${totals.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </h1>
                         <button onClick={() => setHideValues(!hideValues)} className="hero-eye">
                             {hideValues ? <EyeSlash size={24} /> : <Eye size={24} />}
@@ -132,66 +169,61 @@ export default function Dashboard() {
                         <div className="stat-icon income"><TrendUp weight="bold" /></div>
                         <div>
                             <span className="stat-label">Receitas</span>
-                            <div className="stat-value">{hideValues ? '••••' : `R$ ${totals.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</div>
+                            <div className="stat-value">{hideValues ? '••••' : `R$ ${totals.income.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</div>
                         </div>
                     </div>
                     <div className="stat-card expense">
                         <div className="stat-icon expense"><TrendDown weight="bold" /></div>
                         <div>
                             <span className="stat-label">Despesas</span>
-                            <div className="stat-value">{hideValues ? '••••' : `R$ ${totals.expense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</div>
+                            <div className="stat-value">{hideValues ? '••••' : `R$ ${totals.expense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</div>
                         </div>
                     </div>
 
                     {/* Payment Methods (Cartões - With Future Logic) */}
                     <div className="card method-card">
                         <h3 className="section-title">Cartões</h3>
+
+                        {/* Donut Chart */}
+                        {methodStats.length > 0 && (
+                            <div style={{ width: '100%', height: 200, marginBottom: '24px' }}>
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie
+                                            data={methodStats}
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {methodStats.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="var(--surface-color)" strokeWidth={2} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                            contentStyle={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                            itemStyle={{ color: 'var(--text-primary)' }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+
                         <div className="method-list">
-                            {(() => {
-                                const today = startOfDay(new Date());
-
-                                const methodTotals = transactions
-                                    .filter(t => {
-                                        let tDate = parseISO(t.date);
-                                        if (t.deferred) tDate = addMonths(tDate, 1);
-
-                                        // Must be in current view month
-                                        if (!isSameMonth(tDate, currentDate)) return false;
-
-                                        // Must be expense
-                                        if (t.type !== 'expense') return false;
-
-                                        // Check future logic
-                                        const isFuture = isAfter(tDate, today);
-                                        // If future AND NOT installment, exclude.
-                                        // If isInstallment is true, include even if future (invoice logic).
-                                        if (isFuture && !t.isInstallment && !t.deferred) return false;
-                                        // Note: Deferred usually means next month, but here we handled tDate already. 
-                                        // If deferred moved it to THIS month, it's valid.
-
-                                        return true;
-                                    })
-                                    .reduce((acc, t) => {
-                                        const id = t.paymentMethodId;
-                                        if (!acc[id]) acc[id] = 0;
-                                        acc[id] += Number(t.amount);
-                                        return acc;
-                                    }, {});
-
-                                const sorted = Object.keys(methodTotals).sort((a, b) => methodTotals[b] - methodTotals[a]).slice(0, 4);
-
-                                if (sorted.length === 0) return <p className="empty-msg">Sem dados</p>;
-
-                                return sorted.map(id => {
-                                    const mName = paymentMethods.find(p => p.id === id)?.name || 'Outro';
-                                    return (
-                                        <div key={id} className="method-item click-effect" onClick={() => handleCardClick(id)}>
-                                            <span className="method-name">{mName}</span>
-                                            <span className="method-val">R$ {methodTotals[id].toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            {methodStats.length === 0 ? (
+                                <p className="empty-msg">Sem dados</p>
+                            ) : (
+                                methodStats.slice(0, 4).map((item, index) => (
+                                    <div key={item.id} className="method-item click-effect" onClick={() => handleCardClick(item.id)}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS[index % COLORS.length] }}></div>
+                                            <span className="method-name">{item.name}</span>
                                         </div>
-                                    );
-                                });
-                            })()}
+                                        <span className="method-val">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
@@ -204,7 +236,7 @@ export default function Dashboard() {
                             <BarChart data={chartData}>
                                 <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                                 <Tooltip
-                                    formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                    formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                                     contentStyle={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                     itemStyle={{ color: 'var(--text-primary)' }}
                                     cursor={{ fill: 'var(--bg-color)' }}
@@ -220,27 +252,29 @@ export default function Dashboard() {
                             <h3 className="section-title">Últimas</h3>
                             <a href="/transactions" style={{ fontSize: '13px', color: 'var(--primary-color)', fontWeight: '600' }}>Ver tudo</a>
                         </div>
-                        {filteredTransactions.slice(0, 4).map(t => {
-                            const respName = responsibles.find(r => r.id === t.responsibleId)?.name || 'N/A';
-                            const methodName = paymentMethods.find(p => p.id === t.paymentMethodId)?.name || 'N/A';
-                            return (
-                                <div key={t.id} className="recent-item">
-                                    <div className="recent-info">
-                                        <div className="recent-desc">
-                                            {t.description}
-                                            <span className="recent-subtitle">{respName} • {methodName}</span>
+                        {filteredTransactions
+                            .filter(t => !isAfter(parseISO(t.date), startOfDay(new Date())))
+                            .slice(0, 4)
+                            .map(t => {
+                                const respName = responsibles.find(r => r.id === t.responsibleId)?.name || 'N/A';
+                                const methodName = paymentMethods.find(p => p.id === t.paymentMethodId)?.name || 'N/A';
+                                return (
+                                    <div key={t.id} className="recent-item">
+                                        <div className="recent-info">
+                                            <div className="recent-desc">
+                                                {t.description}
+                                                <span className="recent-subtitle">{respName} • {methodName}</span>
+                                            </div>
                                         </div>
-                                        {/* <div className="recent-date">{format(parseISO(t.date), 'dd MMM')}</div> Removed date to save space if needed, or keep it. User asked for details. Let's keep date but move it or style it. Actually date is nice to have. */}
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div className={`recent-amount ${t.type}`}>
-                                            {t.type === 'expense' ? '-' : '+'} {hideValues ? '•••' : Number(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div className={`recent-amount ${t.type}`}>
+                                                {t.type === 'expense' ? '-' : '+'} {hideValues ? '•••' : Number(t.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </div>
+                                            <div className="recent-date">{format(parseISO(t.date), 'dd MMM', { locale: ptBR })}</div>
                                         </div>
-                                        <div className="recent-date">{format(parseISO(t.date), 'dd MMM', { locale: ptBR })}</div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
                     </div>
                 </div>
 
