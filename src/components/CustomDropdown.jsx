@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CaretDown } from '@phosphor-icons/react';
 
-export function CustomDropdown({ options, value, onChange, placeholder = "Selecione" }) {
+export function CustomDropdown({ options, value, onChange, placeholder = "Selecione", icon = null }) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
 
@@ -30,7 +30,10 @@ export function CustomDropdown({ options, value, onChange, placeholder = "Seleci
                 className={`dropdown-trigger ${isOpen ? 'open' : ''}`}
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <span className="selected-label">{selectedLabel}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {icon && <span className="dropdown-icon">{icon}</span>}
+                    <span className="selected-label">{selectedLabel}</span>
+                </div>
                 <motion.div
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
@@ -66,6 +69,7 @@ export function CustomDropdown({ options, value, onChange, placeholder = "Seleci
                 .custom-dropdown {
                     position: relative;
                     min-width: 140px;
+                    width: 100%;
                 }
                 .dropdown-trigger {
                     display: flex;
@@ -73,20 +77,19 @@ export function CustomDropdown({ options, value, onChange, placeholder = "Seleci
                     justify-content: space-between;
                     gap: 12px;
                     width: 100%;
-                    background-color: var(--surface-color);
-                    border: 1px solid transparent;
-                    padding: 8px 16px;
-                    border-radius: var(--radius-full);
+                    background-color: var(--bg-color); /* Match form input bg */
+                    border: 1px solid var(--border-color); /* Match form border */
+                    padding: 0 12px;
+                    height: 52px; /* Match form height */
+                    border-radius: var(--radius-md); /* Match form radius */
                     color: var(--text-primary);
-                    font-size: 14px;
-                    font-weight: 600;
+                    font-size: 16px; /* Match form font */
+                    font-weight: 400;
                     cursor: pointer;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                    transition: all 0.2s;
+                    transition: border-color 0.2s;
                 }
                 .dropdown-trigger:hover {
-                    border-color: var(--border-color);
-                    background-color: var(--bg-color);
+                    border-color: var(--border-color); /* Hover state */
                 }
                 .dropdown-trigger.open {
                     border-color: var(--primary-color);
@@ -121,6 +124,11 @@ export function CustomDropdown({ options, value, onChange, placeholder = "Seleci
                 .dropdown-item.selected {
                     background-color: var(--primary-color);
                     color: white;
+                }
+                .dropdown-icon {
+                    display: flex;
+                    align-items: center;
+                    color: var(--text-secondary);
                 }
             `}</style>
         </div>
