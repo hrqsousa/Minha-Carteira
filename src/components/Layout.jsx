@@ -18,9 +18,9 @@ export function Layout({ children }) {
   }, []);
 
   const navItems = [
-    { path: '/', icon: <House size={isDesktop ? 24 : 24} weight={location.pathname === '/' ? 'fill' : 'regular'} />, label: 'Visão Geral' },
-    { path: '/transactions', icon: <List size={isDesktop ? 24 : 24} weight={location.pathname === '/transactions' ? 'fill' : 'regular'} />, label: 'Extrato' },
-    { path: '/settings', icon: <Gear size={isDesktop ? 24 : 24} weight={location.pathname === '/settings' ? 'fill' : 'regular'} />, label: 'Configurações' },
+    { path: '/', icon: <House size={isDesktop ? 24 : 28} weight={location.pathname === '/' ? 'fill' : 'regular'} />, label: 'Visão Geral' },
+    { path: '/transactions', icon: <List size={isDesktop ? 24 : 28} weight={location.pathname === '/transactions' ? 'fill' : 'regular'} />, label: 'Extrato' },
+    { path: '/settings', icon: <Gear size={isDesktop ? 24 : 28} weight={location.pathname === '/settings' ? 'fill' : 'regular'} />, label: 'Configurações' },
   ];
 
   if (isDesktop) {
@@ -191,7 +191,7 @@ export function Layout({ children }) {
     // Splitting steps to be safe. 
 
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <main style={{ flex: 1, paddingBottom: 'calc(var(--bottom-nav-height) + 20px)' }}>
+      <main style={{ flex: 1, paddingBottom: '120px' }}>
         <PageTransition>
           {children}
         </PageTransition>
@@ -213,23 +213,30 @@ export function Layout({ children }) {
       <style>{`
         .bottom-nav {
           position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: var(--bottom-nav-height);
-          background-color: var(--nav-bg-glass);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border-top: 1px solid rgba(0,0,0,0.05);
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: auto;
+          min-width: 300px;
+          padding: 0 32px;
+          height: 72px;
+          background-color: rgba(230, 230, 230, 0.5); /* Light glass default */
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
           display: flex;
-          justify-content: space-around;
+          justify-content: space-between;
           align-items: center;
-          padding-bottom: env(safe-area-inset-bottom);
           z-index: 1000;
-          box-shadow: 0 -4px 20px rgba(0,0,0,0.03); /* Lifted feel */
-          /* border-top-left-radius: 20px; Removed for glass full width look if preferred, or keep small */
-          border-top-left-radius: 24px;
-          border-top-right-radius: 24px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
+          border-radius: 50px;
+          gap: 16px;
+        }
+
+        [data-theme="dark"] .bottom-nav {
+           background-color: rgba(20, 20, 20, 0.6);
+           border: 1px solid rgba(255, 255, 255, 0.1);
+           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
         
         .nav-item {
@@ -238,16 +245,29 @@ export function Layout({ children }) {
           align-items: center;
           justify-content: center;
           color: var(--text-secondary);
-          font-size: 11px;
-          font-weight: 500;
-          gap: 6px;
-          width: 100%;
-          height: 100%;
-          transition: color 0.2s;
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
+        .nav-item span {
+          display: none;
+        }
+        
+        .nav-item:active {
+          transform: scale(0.9);
+        }
+
         .nav-item.active {
           color: var(--primary-color);
+          background-color: rgba(255, 255, 255, 0.5);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        [data-theme="dark"] .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
         }
       `}</style>
     </div>

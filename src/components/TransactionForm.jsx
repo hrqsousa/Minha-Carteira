@@ -349,6 +349,18 @@ export function TransactionForm({ existingTransaction, onClose }) {
 
             .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
             
+            @media (max-width: 600px) {
+                .form-row {
+                    gap: 6px; /* Even tighter gap */
+                    grid-template-columns: 35% 65%; /* Fixed percentage for better control: Amount needs less, Date needs more */
+                }
+                .input-container {
+                    padding: 0 8px; /* Reduce internal padding */
+                }
+                .prefix { font-size: 14px; } /* Smaller currency prefix */
+                .amount-input { font-size: 16px; } /* Smaller amount font */
+            }
+            
             .input-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
             
             /* FLEX CONTAINER INPUT STYLE */

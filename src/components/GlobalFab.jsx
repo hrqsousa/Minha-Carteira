@@ -14,8 +14,8 @@ export function GlobalFab() {
             <style>{`
         .fab {
             position: fixed;
-            bottom: calc(var(--bottom-nav-height) + 20px);
-            right: 20px;
+            bottom: 112px;
+            right: 24px;
             width: 56px;
             height: 56px;
             border-radius: 50%;
@@ -23,9 +23,9 @@ export function GlobalFab() {
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             z-index: 100;
-            transition: transform 0.2s;
+            transition: transform 0.2s, bottom 0.3s;
             border: none;
             outline: none;
         }
