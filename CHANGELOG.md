@@ -1,3 +1,29 @@
+# Changelog
+
+## v2.0.2 (14/01/2026)
+### 🎨 Design & UI
+- **Nova Barra de Navegação**: Design flutuante estilo "cápsula" na versão mobile com efeito glassmorphism apurado.
+- **Visual Minimalista**: Ícones ampliados e remoção de legendas na barra inferior para uma estética mais limpa.
+- **Layout Refinado**: Ajuste de padding e posicionamento do FAB para harmonizar com a nova navegação.
+
+### 🐛 Correções & Ajustes
+- **Saldo na Dashboard**: Ajuste no tamanho da fonte para evitar quebra de linha em telas mobile, garantindo visualização em linha única.
+- **Formulário de Transação**: Correção no layout dos campos "Valor" e "Data" em dispositivos móveis, ajustando proporções para evitar que a data fique oculta.
+
+## v2.0.1 (06/01/2026)
+### ✨ Novidades
+- **Edição Inteligente de Lotes**: Agora ao editar uma transação recorrente ou parcelada, você pode escolher aplicar a mudança apenas nela, nela e nas futuras ou em todas da série.
+- **Datas Dinâmicas**: Alterar a data de uma parcela ajusta automaticamente as datas das parcelas subsequentes.
+- **Gráfico de Rosca**: Nova visualização na Dashboard para distribuição de gastos por Método de Pagamento (Cartões).
+
+### 🎨 Melhorias Visuais
+- **Setas Indicativas**: Substituído o texto "Próx. Mês" por setas discretas na lista de transações para indicar lançamentos diferidos.
+- **Limpeza Visual**: O número da parcela (ex: 1/12) agora aparece apenas na tag, removendo a duplicação no nome da transação.
+- **Datas em Minúsculo**: Ajuste nos cabeçalhos de data (ex: "20 de janeiro") para um visual mais limpo.
+- **Formatação de Moeda**: Correção na Dashboard para exibir estritamente duas casas decimais nos valores.
+
+---
+
 # Changelog - Minha Carteira v2.0.0
 
 ## ✨ Destaques
