@@ -79,7 +79,7 @@ export default function Settings() {
             {/* About Section */}
             <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '20px' }}>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '4px' }}>Minha Carteira</p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '12px', opacity: 0.7 }}>Versão 2.0.0</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '12px', opacity: 0.7 }}>Versão 2.0.2</p>
             </div>
 
             <style>{`

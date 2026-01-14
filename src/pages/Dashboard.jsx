@@ -356,10 +356,11 @@ export default function Dashboard() {
             gap: 16px;
         }
         .hero-value {
-            font-size: 36px;
+            font-size: clamp(26px, 6vw, 36px);
             font-weight: 800;
             letter-spacing: -1px;
             transition: color 0.3s;
+            white-space: nowrap;
         }
         .hero-eye {
             background: rgba(255,255,255,0.2);

@@ -35,7 +35,7 @@ export default function Login() {
         </div>
 
         <div className="footer-section">
-          <p>Versão 2.0.0</p>
+          <p>Versão 2.0.2</p>
         </div>
       </div>
 
